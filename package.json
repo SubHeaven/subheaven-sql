@@ -1,0 +1,33 @@
+{
+    "name": "subheaven-sql",
+    "version": "0.1.1",
+    "description": "A npm tool to use sql database",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "bin": {
+        "subheaven-sql": "./cli.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/SubHeaven/subheaven-sql.git"
+    },
+    "author": {
+        "name": "SubHeaven",
+        "email": "subheaven.paulo@gmail.com"
+    },
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/SubHeaven/subheaven-sql/issues"
+    },
+    "homepage": "https://github.com/SubHeaven/subheaven-sql#readme",
+    "dependencies": {
+        "debug": "^4.3.1",
+        "dotenv-safe": "^8.2.0",
+        "json5": "^2.2.0",
+        "sequelize": "^6.6.2",
+        "subheaven-arg": "github:SubHeaven/subheaven-arg",
+        "subheaven-tools": "github:SubHeaven/subheaven-tools"
+    }
+}
