@@ -37,7 +37,10 @@ exports.checkConfig = async() => {
 }
 
 exports.loadSchemas = async() => {
+    log("Carregando schemas");
     if (await this.checkConfig()) {
+        log("Config carregado");
+        this.schemas = {};
         let type_map = {
             string: DataTypes.STRING,
             integer: DataTypes.INTEGER,
@@ -49,6 +52,7 @@ exports.loadSchemas = async() => {
         let filenames = fs.readdirSync(process.env.SUB_SQL_SCHEMAS, { withFileTypes: true });
         await filenames.forEachAsync(async(filename, index) => {
             if (filename.isFile() && ['json', 'json5'].indexOf(filename.name.split('.').pop().toLowerCase()) > -1) {
+                log(`    - ${filename.name}`);
                 let schema = json5.parse(fs.readFileSync(`${process.env.SUB_SQL_SCHEMAS}/${filename.name}`, 'utf8'));
                 await Object.keys(schema).forEachAsync(key => {
                     if (typeof schema[key] === 'object') {
@@ -60,9 +64,13 @@ exports.loadSchemas = async() => {
                 let table_name = filename.name.split('.');
                 table_name.pop();
                 table_name = table_name.join('.');
-                this.sequelize.define(table_name, schema);
+                this.schemas[table_name] = schema;
+                let debug = this.sequelize.define(table_name, schema);
+                console.log(debug);
+                console.log(this.sequelize.models)
             }
         });
+        await exports.update_database();
     }
 };
 

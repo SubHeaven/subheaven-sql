@@ -27,6 +27,7 @@
         "dotenv-safe": "^8.2.0",
         "json5": "^2.2.0",
         "sequelize": "^6.6.2",
+        "sqlite3": "^5.0.2",
         "subheaven-arg": "github:SubHeaven/subheaven-arg",
         "subheaven-tools": "github:SubHeaven/subheaven-tools"
     }
