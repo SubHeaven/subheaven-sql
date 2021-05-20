@@ -36,6 +36,26 @@ const test = async() => {
         nome: 'Contato 3',
         telefone: '33 93333-3333'
     });
+
+    console.log("");
+    console.log("Consultando contatos");
+    let dataset = await project.find('contatos');
+    console.log(dataset);
+    console.log("Consultando contato id = 2");
+    let contato2 = await project.find('contatos', { id: 2 });
+    console.log(contato2);
+
+    console.log("");
+    console.log("Alterando o nome do contato 3");
+    await project.update('contatos', { nome: 'Contato 3' }, { telefone: '44 94444-4444' });
+    let novo_contato3 = await project.findByPk('contatos', 3);
+    console.log(novo_contato3);
+
+    console.log("");
+    console.log("Excluindo o contato 2");
+    await project.delete('contatos', { id: 2 });
+    dataset = await project.find('contatos');
+    console.log(dataset);
 }
 
 argParse.init("subheaven-sql", "Cumprimenta alguém");

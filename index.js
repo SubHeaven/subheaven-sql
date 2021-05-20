@@ -66,8 +66,6 @@ exports.loadSchemas = async() => {
                 table_name = table_name.join('.');
                 this.schemas[table_name] = schema;
                 let debug = this.sequelize.define(table_name, schema);
-                console.log(debug);
-                console.log(this.sequelize.models)
             }
         });
         await exports.update_database();
@@ -99,13 +97,6 @@ exports.init = async() => {
     }
 }
 
-exports.insert = async(name, data) => {
-    if (await this.init()) {
-        console.log(this.sequelize.models[name]);
-        return await this.sequelize.models[name].create(data);
-    }
-}
-
 exports.query_map = {
     '$eq': Op.eq,
     '$neq': Op.eq,
@@ -126,7 +117,7 @@ exports.convertToSequelizeQuery = async query => {
     return new_query;
 };
 
-exports.find = async(name, query) => {
+exports.find = async(name, query, mantainSequelize = false) => {
     log("Fazendo uma consulta. Filtro:")
     log(`    ${json5.stringify(query)}`);
     if (await this.init()) {
@@ -134,7 +125,7 @@ exports.find = async(name, query) => {
             let dataset = await this.sequelize.models[name].findAll();
             let result = [];
             await dataset.forEachAsync(async item => {
-                result.push(item.dataValues);
+                mantainSequelize ? result.push(item) : result.push(item.dataValues);
             });
             log(`Consulta realizada com sucesso! ${result.length} dados retornados.`);
             return result;
@@ -143,7 +134,7 @@ exports.find = async(name, query) => {
             let dataset = await this.sequelize.models[name].findAll({ where: q });
             let result = [];
             await dataset.forEachAsync(async item => {
-                result.push(item.dataValues);
+                mantainSequelize ? result.push(item) : result.push(item.dataValues);
             });
             log(`Consulta realizada com sucesso! ${result.length} dados retornados.`);
             return result;
@@ -151,7 +142,7 @@ exports.find = async(name, query) => {
     }
 }
 
-exports.findOne = async(name, query) => {
+exports.findOne = async(name, query, mantainSequelize = false) => {
     log("Fazendo uma consulta. Filtro:")
     log(`    ${json5.stringify(query)}`);
     if (await this.init()) {
@@ -159,7 +150,7 @@ exports.findOne = async(name, query) => {
             let dataset = await this.sequelize.models[name].findAll();
             let result = [];
             await dataset.forEachAsync(async item => {
-                result.push(item.dataValues);
+                mantainSequelize ? result.push(item) : result.push(item.dataValues);
             });
             if (result.length > 0) {
                 log(`Consulta realizada com sucesso! Informação encontrada.`);
@@ -173,7 +164,7 @@ exports.findOne = async(name, query) => {
             let dataset = await this.sequelize.models[name].findAll({ where: q });
             let result = [];
             await dataset.forEachAsync(async item => {
-                result.push(item.dataValues);
+                mantainSequelize ? result.push(item) : result.push(item.dataValues);
             });
             if (result.length > 0) {
                 log(`Consulta realizada com sucesso! Informação encontrada.`);
@@ -186,11 +177,50 @@ exports.findOne = async(name, query) => {
     }
 }
 
-exports.teste = async() => {
-    let dataset = await this.find('user', {
-        user: {
-            '$eq': 'Apagar'
-        }
-    });
-    console.log(dataset);
-};
+exports.findByPk = async(name, id, mantainSequelize = false) => {
+    log(`Consultando um registro pela chave primária. Tabela = ${name}, ID = ${id}.`);
+    if (await this.init()) {
+        let data = await this.sequelize.models[name].findByPk(id);
+        log(`Consulta realizada com sucesso!`);
+        return mantainSequelize ? data : data.dataValues;
+    }
+}
+
+exports.insert = async(name, data, mantainSequelize = false) => {
+    log(`inserindo um registro na tabela ${name}.`);
+    if (await this.init()) {
+        let new_data = await this.sequelize.models[name].create(data);
+        log(`Registro inserido com sucesso.`);
+        log(new_data.toJSON());
+        return mantainSequelize ? new_data : new_data.dataValues;
+    }
+}
+
+exports.update = async(name, query, data) => {
+    log(`Alterando dados na tabela ${name}, filtro:`);
+    log(JSON.stringify(query));
+    if (await this.init()) {
+        let dataset = await this.find(name, query, mantainSequelize = true);
+        let count = 0;
+        await dataset.forEachAsync(async item => {
+            await Object.keys(data).forEachAsync(key => {
+                item[key] = data[key];
+            });
+            item.save();
+            count++;
+        });
+        let noum = count == 1 ? 'registro alterado' : 'registros alterados';
+        log(`Update feito com sucesso. ${count} ${noum}!`);
+        return count;
+    }
+}
+
+exports.delete = async(name, query, mantainSequelize = false) => {
+    log(`Excluindo um registro da tabela ${name}. Query: ${JSON.stringify(query)}`);
+    if (await this.init()) {
+        let count = await this.sequelize.models[name].destroy({ where: query });
+        let noum = count == 1 ? 'registro excluído' : 'registros excluídos';
+        log(`Registro excluido com sucesso. ${count} ${noum}!`);
+        return count;
+    }
+}
