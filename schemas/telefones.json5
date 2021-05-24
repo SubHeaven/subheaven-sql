@@ -1,21 +1,26 @@
 {
-    id: {
-        primary: true
-    },
-    nome: {
-        type: 'string',
-        comment: 'Nome do contato ou local do telefone> Ex Casa, Mãe, Trabalho, etc'
-    },
-    telefone: {
-        type: 'string',
-        required: true
-    },
-    contato: {
-        type: 'integer',
-        foreign: {
-            model: 'contatos',
-            key: 'id',
-            rule: 'deferred'
+    name: "telefones",
+    description: "Cadastro de telefones dos contatos",
+    model: "telefone",
+    "fields": {
+        id: {
+            primary: true
+        },
+        nome: {
+            type: 'string',
+            comment: 'Nome do contato ou local do telefone> Ex Casa, Mãe, Trabalho, etc'
+        },
+        telefone: {
+            type: 'string',
+            required: true
+        },
+        contato: {
+            type: 'integer',
+            foreign: {
+                model: 'contatos',
+                key: 'id',
+                rule: 'deferred'
+            }
         }
     }
 }

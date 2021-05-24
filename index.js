@@ -116,18 +116,20 @@ exports.loadSchemas = async() => {
             let base_schema = loaded_schemas[0].schema;
             let schema = {};
             if (loaded_schemas[0].foreign) {
-                base_schema[loaded_schemas[0].foreign.key].foreign.model = this.sequelize.models[loaded_schemas[0].foreign.model];
+                base_schema.fields[loaded_schemas[0].foreign.key].foreign.model = this.sequelize.models[loaded_schemas[0].foreign.model];
             }
-            await Object.keys(base_schema).forEachAsync(async fieldname => {
-                let field = {};
-                await Object.keys(base_schema[fieldname]).forEachAsync(async key => {
-                    if (field_maker[key]) {
-                        field = await field_maker[key](field, base_schema[fieldname][key])
-                    }
-                });
-                schema[fieldname] = field;
+            await Object.keys(base_schema.fields).forEachAsync(async fieldname => {
+                if (fieldname.substring(0, 1) !== '_') {
+                    let field = {};
+                    await Object.keys(base_schema.fields[fieldname]).forEachAsync(async key => {
+                        if (field_maker[key]) {
+                            field = await field_maker[key](field, base_schema.fields[fieldname][key])
+                        }
+                    });
+                    schema[fieldname] = field;
+                }
             });
-            this.schemas[loaded_schemas[0].table_name] = schema;
+            this.schemas[loaded_schemas[0].table_name] = base_schema;
             this.sequelize.define(loaded_schemas[0].table_name, schema);
             loaded_schemas.splice(0, 1);
         }

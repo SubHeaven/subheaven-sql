@@ -1,9 +1,14 @@
 {
-    id: {
-        primary: true
-    },
-    nome: {
-        type: 'string',
-        required: true
+    name: "contatos",
+    description: "Cadastro da lista de contatos",
+    model: "contato",
+    "fields": {
+        id: {
+            primary: true
+        },
+        nome: {
+            type: 'string',
+            required: true
+        }
     }
 }
