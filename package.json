@@ -1,6 +1,6 @@
 {
     "name": "subheaven-sql",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "A npm tool to use sql database",
     "main": "index.js",
     "scripts": {
@@ -29,6 +29,7 @@
         "sequelize": "^6.6.2",
         "sqlite3": "^5.0.2",
         "subheaven-arg": "github:SubHeaven/subheaven-arg",
+        "subheaven-env": "github:SubHeaven/subheaven-env",
         "subheaven-tools": "github:SubHeaven/subheaven-tools"
     }
 }

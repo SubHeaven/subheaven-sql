@@ -1,75 +1,141 @@
 const fs = require('fs');
 const log = require('debug')('subheaven:sql');
-const { Sequelize, DataTypes, Op } = require('sequelize');
+const { Sequelize, DataTypes, Deferrable, Op } = require('sequelize');
 const json5 = require('json5');
-const tools = require('subheaven-tools');
+require('subheaven-tools').init();
+
+const env = require('subheaven-env');
+env.addParams([
+    { name: 'SUB_SQL_DIALECT', description: 'A sequelize dialect option.', required: true, sample: 'sqlite' },
+    { name: 'SUB_SQL_STORAGE', description: 'The path of database or the option :memory: for a in memory database.', required: true, sample: ':memory:' },
+    { name: 'SUB_SQL_SCHEMAS', description: 'The path of the schemas folder.', required: true, sample: './schemas' }
+]);
+env.config();
 
 exports.update_database = async() => {
     await this.sequelize.sync({ alter: true });
 }
 
-const checkIfEnvIsConfigured = async() => {
-    let params_needed = [
-        'SUB_SQL_DIALECT',
-        'SUB_SQL_STORAGE',
-        'SUB_SQL_SCHEMAS'
-    ];
-    let params_loaded = Object.keys(process.env);
-    return params_needed.every(elem => params_loaded.includes(elem));
+exports.hasForeign = async(schema) => {
+    let result = null;
+    await Object.keys(schema).forEachAsync(async key => {
+        if (schema[key].foreign) {
+            result = {
+                model: schema[key].foreign.model,
+                key: key
+            }
+        }
+    });
+    return result;
 }
 
-exports.checkConfig = async() => {
-    if (await checkIfEnvIsConfigured()) {
-        return true
-    } else {
-        console.log("");
-        console.log('Environment params not found! Please, edit or create a .env file in your project folder with the following params:');
-        console.log('    SUB_SQL_DIALECT: A sequelize dialect option ');
-        console.log('    SUB_SQL_STORAGE: the path of database or the option :memory: for a in memory database. ');
-        console.log('    SUB_SQL_SCHEMAS: the path of the schemas folder. ');
-        console.log("");
-        console.log('Example:');
-        console.log('SUB_SQL_DIALECT=sqlite');
-        console.log('SUB_SQL_STORAGE=:memory:');
-        console.log('SUB_SQL_SCHEMAS=./schemas');
-        process.exit(1);
-    }
+exports.loadSchemaFiles = async() => {
+    let filenames = fs.readdirSync(process.env.SUB_SQL_SCHEMAS, { withFileTypes: true });
+    let loaded_schemas = [];
+    await filenames.forEachAsync(async filename => {
+        if (filename.isFile() && ['json', 'json5'].indexOf(filename.name.split('.').pop().toLowerCase()) > -1) {
+            let base_schema = json5.parse(fs.readFileSync(`${process.env.SUB_SQL_SCHEMAS}/${filename.name}`, 'utf8'));
+            let table_name = filename.name.split('.');
+            table_name.pop();
+            table_name = table_name.join('.');
+            let has_foreign = await this.hasForeign(base_schema);
+            loaded_schemas.push({
+                table_name: table_name,
+                schema: base_schema,
+                foreign: has_foreign
+            })
+        }
+    });
+    return loaded_schemas;
 }
 
 exports.loadSchemas = async() => {
     log("Carregando schemas");
-    if (await this.checkConfig()) {
-        log("Config carregado");
-        this.schemas = {};
-        let type_map = {
-            string: DataTypes.STRING,
-            integer: DataTypes.INTEGER,
-            time: DataTypes.TIME,
-            date: DataTypes.DATEONLY,
-            datetime: DataTypes.DATE,
-            float: DataTypes.FLOAT
+    this.schemas = {};
+    let type_map = {
+        string: DataTypes.STRING,
+        text: DataTypes.TEXT,
+        integer: DataTypes.INTEGER,
+        time: DataTypes.TIME,
+        date: DataTypes.DATEONLY,
+        datetime: DataTypes.DATE,
+        float: DataTypes.FLOAT,
+        boolean: DataTypes.BOOLEAN
+    }
+    let fk_map = {
+        immediate: Deferrable.INITIALLY_IMMEDIATE,
+        deferred: Deferrable.INITIALLY_DEFERRED,
+        not: Deferrable.NOT
+    }
+    let field_maker = {
+        type: async(field, value) => {
+            if (value) {
+                field['type'] = type_map[value];
+            }
+            return field;
+        },
+        primary: async(field, value) => {
+            if (value) {
+                field['type'] = type_map.integer;
+                field['autoIncrement'] = true;
+                field['allowNull'] = false;
+                field['primaryKey'] = true;
+            }
+            return field;
+        },
+        required: async(field, value) => {
+            field['allowNull'] = value ? false : true;
+            return field;
+        },
+        default: async(field, value) => {
+            field['defaultValue'] = value;
+            return field;
+        },
+        unique: async(field, value) => {
+            field['unique'] = value;
+            return field;
+        },
+        comment: async(field, value) => {
+            field['comment'] = value;
+            return field;
+        },
+        foreign: async(field, value) => {
+            if (value) {
+                field['model'] = value.model;
+                field['key'] = value.key;
+                field['deferrable'] = fk_map[value.rule];
+            }
+            return field;
         }
-        let filenames = fs.readdirSync(process.env.SUB_SQL_SCHEMAS, { withFileTypes: true });
-        await filenames.forEachAsync(async(filename, index) => {
-            if (filename.isFile() && ['json', 'json5'].indexOf(filename.name.split('.').pop().toLowerCase()) > -1) {
-                log(`    - ${filename.name}`);
-                let schema = json5.parse(fs.readFileSync(`${process.env.SUB_SQL_SCHEMAS}/${filename.name}`, 'utf8'));
-                await Object.keys(schema).forEachAsync(key => {
-                    if (typeof schema[key] === 'object') {
-                        schema[key]['type'] = type_map[schema[key]['type']]
-                    } else {
-                        schema[key] = type_map[schema[key]]
+    }
+
+    let loaded_schemas = await this.loadSchemaFiles();
+
+    while (loaded_schemas.length > 0) {
+        console.log(loaded_schemas[0]);
+        if (!loaded_schemas[0].foreign || this.sequelize.models[loaded_schemas[0].foreign.model]) {
+            let base_schema = loaded_schemas[0].schema;
+            let schema = {};
+            if (loaded_schemas[0].foreign) {
+                base_schema[loaded_schemas[0].foreign.key].foreign.model = this.sequelize.models[loaded_schemas[0].foreign.model];
+            }
+            await Object.keys(base_schema).forEachAsync(async fieldname => {
+                let field = {};
+                await Object.keys(base_schema[fieldname]).forEachAsync(async key => {
+                    if (field_maker[key]) {
+                        field = await field_maker[key](field, base_schema[fieldname][key])
                     }
                 });
-                let table_name = filename.name.split('.');
-                table_name.pop();
-                table_name = table_name.join('.');
-                this.schemas[table_name] = schema;
-                let debug = this.sequelize.define(table_name, schema);
-            }
-        });
-        await exports.update_database();
+                schema[fieldname] = field;
+            });
+            console.log(schema);
+            this.schemas[loaded_schemas[0].table_name] = schema;
+            this.sequelize.define(loaded_schemas[0].table_name, schema);
+            loaded_schemas.splice(0, 1);
+        }
     }
+
+    await this.update_database();
 };
 
 exports.init = async() => {
@@ -88,7 +154,6 @@ exports.init = async() => {
             }
 
             await this.loadSchemas();
-            // this.update_database();
         }
         return true;
     } catch (e) {
@@ -112,7 +177,6 @@ exports.convertToSequelizeQuery = async query => {
         let new_value = typeof query[key] === 'object' ? await this.convertToSequelizeQuery(query[key]) : query[key];
         let new_key = this.query_map[key] ? this.query_map[key] : key;
         new_query = {...new_query, [new_key]: new_value };
-        // new_query = {...new_query, [this.query_map[key] ? this.query_map[key] : key]: value };
     });
     return new_query;
 };
@@ -196,7 +260,7 @@ exports.insert = async(name, data, mantainSequelize = false) => {
     }
 }
 
-exports.update = async(name, query, data) => {
+exports.update = async(name, query, data, mantainSequelize = false) => {
     log(`Alterando dados na tabela ${name}, filtro:`);
     log(JSON.stringify(query));
     if (await this.init()) {
@@ -215,7 +279,7 @@ exports.update = async(name, query, data) => {
     }
 }
 
-exports.delete = async(name, query, mantainSequelize = false) => {
+exports.delete = async(name, query) => {
     log(`Excluindo um registro da tabela ${name}. Query: ${JSON.stringify(query)}`);
     if (await this.init()) {
         let count = await this.sequelize.models[name].destroy({ where: query });

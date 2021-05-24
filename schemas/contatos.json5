@@ -1,0 +1,9 @@
+{
+    id: {
+        primary: true
+    },
+    nome: {
+        type: 'string',
+        required: true
+    }
+}

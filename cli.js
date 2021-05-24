@@ -1,6 +1,5 @@
 const project = require('./index');
 const argParse = require('subheaven-arg');
-require('dotenv').config();
 
 const test_init = async() => {
     console.log("Inicializando banco de dados")
@@ -58,8 +57,9 @@ const test = async() => {
     console.log(dataset);
 }
 
-argParse.init("subheaven-sql", "Cumprimenta alguém");
+argParse.init("subheaven-sql", "Testa a conexão com o banco de dados");
 argParse.boolean("show-config", "Mostra a configuração atual de banco de dados");
+argParse.boolean("test-init", "Testa a configuração e a inicialização do banco de dados");
 (async() => {
     if (argParse.validate()) {
         if (params.show_config) {
@@ -69,8 +69,9 @@ argParse.boolean("show-config", "Mostra a configuração atual de banco de dados
                 console.log(`SUB_SQL_STORAGE=${process.env.SUB_SQL_STORAGE}`);
                 console.log(`SUB_SQL_SCHEMAS=${process.env.SUB_SQL_SCHEMAS}`);
             }
+        } else if (params.test_init) {
+            await test_init();
         } else {
-            // await test_init();
             await test();
         }
     }
