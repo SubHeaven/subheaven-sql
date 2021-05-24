@@ -112,7 +112,6 @@ exports.loadSchemas = async() => {
     let loaded_schemas = await this.loadSchemaFiles();
 
     while (loaded_schemas.length > 0) {
-        console.log(loaded_schemas[0]);
         if (!loaded_schemas[0].foreign || this.sequelize.models[loaded_schemas[0].foreign.model]) {
             let base_schema = loaded_schemas[0].schema;
             let schema = {};
@@ -128,7 +127,6 @@ exports.loadSchemas = async() => {
                 });
                 schema[fieldname] = field;
             });
-            console.log(schema);
             this.schemas[loaded_schemas[0].table_name] = schema;
             this.sequelize.define(loaded_schemas[0].table_name, schema);
             loaded_schemas.splice(0, 1);

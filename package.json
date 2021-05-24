@@ -1,6 +1,6 @@
 {
     "name": "subheaven-sql",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "A npm tool to use sql database",
     "main": "index.js",
     "scripts": {
