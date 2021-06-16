@@ -141,6 +141,7 @@ exports.loadSchemas = async() => {
 exports.init = async() => {
     try {
         if (!this.sequelize) {
+            log("Inicializando o modulo subheaven-sql");
             this.sequelize = new Sequelize({
                 dialect: process.env.SUB_SQL_DIALECT,
                 storage: process.env.SUB_SQL_STORAGE,
@@ -154,6 +155,8 @@ exports.init = async() => {
             }
 
             await this.loadSchemas();
+            log("modulo inicializado. Esquemas:");
+            log(JSON.stringify(this.schemas, null, 4));
         }
         return true;
     } catch (e) {
